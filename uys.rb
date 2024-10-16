@@ -101,7 +101,7 @@ module Uys
   # ___________________________________________________________________________
 
   module Util
-    def cmd(*strings, echo: true, page: nil)
+    def cmd(*strings, echo: true, page: nil, say_done: true)
       script = disp = strings.join
       disp = disp.inspect if disp.include?("\n")
       less = page ? +" | less -FIJMRSWX" : nil
@@ -110,8 +110,10 @@ module Uys
         disp = "{ #{disp}; } 2>&1#{less}"
       end
       if echo
+        say_done and script = "#{script}; echo '+ Done.'"
         script = "{ echo '++ '#{disp.shellescape}; #{script}; } 2>&1#{less}"
       else
+        say_done and script = "{ #{script}; echo '+ Done.'; }"
         script = "#{script} 2>&1#{less}"
       end
       system(["/usr/bin/bash", "#{self.class.name}#cmd bash"], "-c", script)
@@ -371,9 +373,9 @@ module Uys
       text << "+ Total #{pkg_info.size} packages from #{file_info.size} files."
       text << "+ Marked #{@markedi} installed package files for delete."
       text << "+ Marked #{@markedu} uninstalled package files for delete."
-      marked.each { |path| text << "+ Marked: #{path.inspect}" }
+      marked.each { |path| text << "+ Marked: #{path.inspect}" if path[-4, 4] != ".sig" }
 
-      cmd("echo #{text.join("\n").shellescape}", page: true, echo: false)
+      cmd("echo #{text.join("\n").shellescape}", page: true, echo: false, say_done: false)
       return if marked.size == 0
 
       ask_continue "Are you sure?" or return
@@ -381,6 +383,7 @@ module Uys
       marked -= sudos
       `sudo rm #{sudos.shelljoin}` if sudos.any?
       `rm #{marked.shelljoin}` if marked.any?
+      puts "+ Done."
     end
 
     def mark_for_delete(pkg, keep:)
