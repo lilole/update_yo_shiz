@@ -369,11 +369,15 @@ module Uys
     def remove_marked_files
       marked = file_info.select { |_path, info| info[:delete] }.map { |path, _info| Dir.glob("#{path}*") }.flatten
 
-      text = []
+      text = []; del_bytes = 0
       text << "+ Total #{pkg_info.size} packages from #{file_info.size} files."
       text << "+ Marked #{@markedi} installed package files for delete."
       text << "+ Marked #{@markedu} uninstalled package files for delete."
-      marked.each { |path| text << "+ Marked: #{path.inspect}" if path[-4, 4] != ".sig" }
+      marked.each do |path|
+        text << "+ Marked: #{path.inspect}" if path[-4, 4] != ".sig"
+        del_bytes += File.size(path)
+      end
+      text << "+ Total %3.1f MB (%d bytes) marked for delete." % [del_bytes / 1e6, del_bytes]
 
       cmd("echo #{text.join("\n").shellescape}", page: true, echo: false, say_done: false)
       return if marked.size == 0
