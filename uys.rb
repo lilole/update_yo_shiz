@@ -325,15 +325,20 @@ module Uys
       dir_info.each do |dir, infos|
         paths = infos.map { |h| h[:path] }
 
-        File.write(temp_file, paths.join("\n") << "\n") # pacsort requires last LF
-        out = Dir.chdir(dir) { `cat #{temp_file} | pacsort --files` }
-        File.delete(temp_file) rescue nil
+        text = paths.join("\n") << "\n" # pacsort requires last LF
+        out = with_temp_file(text) { |file| `cat #{file} | pacsort --files` }
 
         out.split("\n").each do |path|
           file_info[path][:index] = (index += 1)
         end
       end
       @dir_info = nil # Release mem
+    end
+
+    def with_temp_file(body="")
+      file = "/tmp/PackageCacheClean.tmp"
+      File.write(file, body)
+      yield(file).tap { File.delete(file) rescue nil }
     end
 
     def group_list_by_pkg_name
@@ -371,7 +376,11 @@ module Uys
     def installed_pkgs = @installed_pkgs ||= `pacman -Qsq`.split("\n").to_set
 
     def remove_marked_files
-      marked = file_info.select { |_path, info| info[:delete] }.map { |path, _info| Dir.glob("#{path}*") }.flatten
+      marked = begin
+        file_info.select { |_path, info| info[:delete] }
+          .map { |path, _info| Dir.glob("#{path}*") } # Need glob for .sig files
+          .flatten
+      end
 
       text = []; del_bytes = 0
       text << "+ Total #{pkg_info.size} packages from #{file_info.size} files."
@@ -383,9 +392,9 @@ module Uys
       end
       text << "+ Total %3.1f MB (%d bytes) marked for delete." % [del_bytes / 1e6, del_bytes]
 
-      File.write(temp_file, text.join("\n"))
-      cmd("cat #{temp_file}", page: true, echo: false, say_done: false)
-      File.delete(temp_file) rescue nil
+      with_temp_file(text.join("\n")) do |file|
+        cmd("cat #{file}", page: true, echo: false, say_done: false)
+      end
       return if marked.size == 0
       ask_continue "Are you sure?" or return
 
@@ -397,8 +406,6 @@ module Uys
 
       puts "+ Done."
     end
-
-    def temp_file = "/tmp/PackageCacheClean.tmp"
 
     def mark_for_delete(pkg, keep:)
       return 0 if pkg_info[pkg].size < keep
