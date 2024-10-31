@@ -252,7 +252,7 @@ module Uys
     end
 
     def apply_pikaur_updates
-      ask_continue("Apply pikaur updates?") or return
+      ask_continue("Apply pikaur updates?", "yNq") or return
       cmd(pikaur("-Su"), page: "-r +F")
     end
 
@@ -276,9 +276,9 @@ module Uys
 
     def rebooted? = !! config.rebooted
 
-    def pacman(opts) = "sudo pacman --noconfirm --noprogressbar --color always #{opts}"
+    def pacman(opts) = "sudo pacman --noconfirm --color always #{opts}"
 
-    def pikaur(opts) = "pikaur -a --noconfirm #{opts}"
+    def pikaur(opts) = "pikaur -a --noconfirm --color always #{opts}"
   end # Core
 
   # ___________________________________________________________________________
@@ -324,8 +324,12 @@ module Uys
       index = -1
       dir_info.each do |dir, infos|
         paths = infos.map { |h| h[:path] }
-        out = Dir.chdir(dir) { `echo #{paths.join("\n").shellescape} | pacsort --files` }
-        out.strip.split("\n").each do |path|
+
+        File.write(temp_file, paths.join("\n") << "\n") # pacsort requires last LF
+        out = Dir.chdir(dir) { `cat #{temp_file} | pacsort --files` }
+        File.delete(temp_file) rescue nil
+
+        out.split("\n").each do |path|
           file_info[path][:index] = (index += 1)
         end
       end
@@ -364,7 +368,7 @@ module Uys
       end
     end
 
-    def installed_pkgs = @installed_pkgs ||= `pacman -Qsq`.strip.split("\n").to_set
+    def installed_pkgs = @installed_pkgs ||= `pacman -Qsq`.split("\n").to_set
 
     def remove_marked_files
       marked = file_info.select { |_path, info| info[:delete] }.map { |path, _info| Dir.glob("#{path}*") }.flatten
@@ -379,16 +383,22 @@ module Uys
       end
       text << "+ Total %3.1f MB (%d bytes) marked for delete." % [del_bytes / 1e6, del_bytes]
 
-      cmd("echo #{text.join("\n").shellescape}", page: true, echo: false, say_done: false)
+      File.write(temp_file, text.join("\n"))
+      cmd("cat #{temp_file}", page: true, echo: false, say_done: false)
+      File.delete(temp_file) rescue nil
       return if marked.size == 0
-
       ask_continue "Are you sure?" or return
+
       sudos = marked.select { |path| ! File.writable?(path) }
       marked -= sudos
-      `sudo rm #{sudos.shelljoin}` if sudos.any?
-      `rm #{marked.shelljoin}` if marked.any?
+
+      sudos.any?  and sudos.each_slice(20)  { |paths| `sudo rm #{paths.shelljoin}` }
+      marked.any? and marked.each_slice(20) { |paths| `rm #{paths.shelljoin}` }
+
       puts "+ Done."
     end
+
+    def temp_file = "/tmp/PackageCacheClean.tmp"
 
     def mark_for_delete(pkg, keep:)
       return 0 if pkg_info[pkg].size < keep
