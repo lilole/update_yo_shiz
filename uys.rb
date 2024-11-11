@@ -190,20 +190,20 @@ module Uys
     def pacman_pre_update
       if (pkgs = config.pacman.pre_update.uninstalls)&.any?
         if ask_continue("Uninstall #{pkgs.inspect}?", "yNq")
-          cmd(pacman("-Rs #{pkgs.shelljoin}"), page: "-r")
+          cmd(pacman("-Rs #{pkgs.shelljoin}"), page: "-+F -r")
         end
       end
     end
 
     def download_pacman_updates
       ask_continue("Download needed updates?") or return
-      cmd(pacman("-Suyw"), page: "-r")
+      cmd(pacman("-Suyw"), page: "-+F -r")
     end
 
     def apply_pacman_updates
       puts("\nWARNING: CLOSE EXTRA APP WINDOWS: Updates are about to be applied.")
       ask_continue("Apply downloaded updates?") or return
-      cmd(pacman("-Su"), page: "-r +F")
+      cmd(pacman("-Su"), page: "-+F -r")
     end
 
     def check_for_pacnew_files
@@ -240,26 +240,26 @@ module Uys
 
     def apply_new_pacman_updates
       ask_continue("Check and apply new pacman updates?") or return
-      cmd(pacman("-Suy"), page: "-r")
+      cmd(pacman("-Suy"), page: "-+F -r")
     end
 
     def check_pikaur_updates
       ask_continue("Check pikaur updates?") or return
       loop do
-        cmd(pikaur("-Qu"), page: true)
+        cmd(pikaur("-Qu"), page: "-r")
         ask_continue("Check again?", "yNq") or break
       end
     end
 
     def apply_pikaur_updates
       ask_continue("Apply pikaur updates?", "yNq") or return
-      cmd(pikaur("-Su"), page: "-r +F")
+      cmd(pikaur("-Su"), page: "-+F -r")
     end
 
     def pikaur_post_update
       if (pkgs = config.pikaur.post_update.installs)&.any?
         if ask_continue("Install #{pkgs.inspect}?", "yNq")
-          cmd(pikaur("-S #{pkgs.shelljoin}"), page: "-r +F")
+          cmd(pikaur("-S #{pkgs.shelljoin}"), page: "-+F -r")
         end
       end
     end
