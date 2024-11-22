@@ -33,17 +33,17 @@ module Uys
             10. Clear package caches.
 
         Usage:
-          #{$0} [-r|--rebooted]
-          #{$0} [-b|boot_log] [-c|check] [-p|pcc]
+          #{$0} [-bcp] [b|boot_log] [c|check] [p|pcc]
+          #{$0} [-r|r|rebooted]
 
         Where:
-          -r, --rebooted => A reboot just occurred, so begin at #6 above.
+          b, boot_log, -b => Check boot log for errors, ignore the other steps.
 
-          boot_log, -b => Check boot log for errors, ignore the other steps.
+          c, check, -c => Check for updates, ignore the other steps.
 
-          check, -c => Check for updates, ignore the other steps.
+          p, pcc, -p => Do package cache cleanup, ignore the other steps.
 
-          pcc, -p => Do package cache cleanup, ignore the other steps.
+          r, rebooted, -r => A reboot just occurred, so begin at #6 above.
 
       END
       exit(excode) if excode >= 0
@@ -104,7 +104,7 @@ module Uys
     def cmd(*strings, echo: true, page: nil, say_done: true)
       script = disp = strings.join
       disp = disp.inspect if disp.include?("\n")
-      less = page ? +" | less -FIJMRSWX" : nil
+      less = page ? +" | less -FIJMRSWX#8 --status-col-width=1" : nil
       if less
         less << " #{page}" if String === page
         disp = "{ #{disp}; } 2>&1#{less}"
@@ -150,11 +150,11 @@ module Uys
 
     def run
       steps = []
-      config.checkupd && steps << -> { check_all_updates }
-      config.boot_log && steps << -> { check_system_log(ask: false) }
-      config.pcc      && steps << -> { clear_package_caches(ask: false) }
+      config.boot_log and steps << -> { check_system_log(ask: false) }
+      config.checkupd and steps << -> { check_all_updates }
+      config.pcc      and steps << -> { clear_package_caches(ask: false) }
       steps.empty? and steps << -> { standard_steps }
-      steps.each { |step| step.call }
+      steps.each { |step| step[] }
     end
 
     def standard_steps
@@ -441,12 +441,12 @@ module Uys
       Config.rebooted = false
       idx = -1
       while (arg = args[idx += 1])
+        arg =~ /^-[^-]*[h?]|^--help$/ and usage
         ok = 0
-        arg =~ %r`^-[^-]*[h?]|^--help$`  && ok = 1 and usage
-        arg =~ %r`^-[^-]*r|^--rebooted$` && ok = 1 and Config.rebooted = true
-        arg =~ %r`^-[^-]*b|^boot_log$`   && ok = 1 and Config.boot_log = true
-        arg =~ %r`^-[^-]*c|^check$`      && ok = 1 and Config.checkupd = true
-        arg =~ %r`^-[^-]*p|^pcc$`        && ok = 1 and Config.pcc = true
+        arg =~ /^-[^-]*b|^b$|^boot_log$/ && ok = 1 and Config.boot_log = true
+        arg =~ /^-[^-]*c|^c$|^check$/    && ok = 1 and Config.checkupd = true
+        arg =~ /^-[^-]*p|^p$|^pcc$/      && ok = 1 and Config.pcc = true
+        arg =~ /^-[^-]*r|^r$|^rebooted$/ && ok = 1 and Config.rebooted = true
         usage "Invalid arg: #{arg.inspect}" if ok < 1
       end
     end
