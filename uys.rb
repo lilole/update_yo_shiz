@@ -197,7 +197,7 @@ module Uys
 
     def download_pacman_updates
       ask_continue("Download needed updates?") or return
-      cmd(pacman("-Suyw"), page: "-+F -r")
+      cmd(pacman("-Suyw"), page: "-+F -r +F")
     end
 
     def apply_pacman_updates
@@ -227,14 +227,9 @@ module Uys
 
     def check_system_log(ask: true)
       ask and (ask_continue("Check system log for errors?") or return)
-      out = `journalctl -b | head -n 10`
-      lines = []
-      out.each_line do |line|
-        lines << line
-        line =~ / kernel: Linux version .+ SMP / and break
-        lines.size >= 10 and (lines.clear; break)
-      end
-      out = lines.join << `journalctl -b | egrep -i 'error|warn|fail|fatal' 2>&1`
+      res = [/warn|error|fail|fatal/i, / kernel: Linux version .+ SMP /]
+      out = `journalctl --boot --no-hostname --priority=0..5` # emerg..notice
+      out = out.each_line.select { |line| res.any? { _1.match?(line) } }.join
       cmd("echo #{out.shellescape}", page: "+G", echo: false)
     end
 
