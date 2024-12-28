@@ -489,6 +489,7 @@ module Uys
     def reboot_maybe
       ask_continue("Reboot now?", "ynq") or return
       `sudo reboot`
+      sleep # Just stop, give reboot the time it needs
     end
 
     def check_system_log(ask: true)
