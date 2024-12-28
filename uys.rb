@@ -10,7 +10,7 @@ require "set"
 require "shellwords"
 
 module Uys
-  module Usage
+  class Cli
     def usage(msg=nil, excode=1)
       msg ||= "Online help."
       prog = File.basename($0)
@@ -53,7 +53,7 @@ module Uys
       END
       exit(excode) if excode >= 0
     end
-  end # Usage
+  end # Cli
 end # Uys
 
 module Extensions
@@ -544,8 +544,6 @@ module Uys
   end # Core
 
   class Cli
-    include Usage
-
     attr_reader :args
 
     def initialize(args)
