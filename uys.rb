@@ -50,6 +50,10 @@ module Uys
 
           r, rebooted, -r => A reboot just occurred, so begin at #6 above.
 
+        See also:
+          - Configurable global defaults are defined in the `Uys::Config`
+            constant, at the bottom of this file (#{$0}).
+
       END
       exit(excode) if excode >= 0
     end
@@ -200,6 +204,7 @@ module Mixin
       end
 
     private
+
       def tty_columns
         n = `stty -a 2> /dev/null`[/\bcolumns (\d+)/, 1]
         n ? n.to_i : 80
@@ -581,31 +586,31 @@ module Uys
       end
     end
   end # Cli
-
-  ### Defaults for all configurable parameters.
-    # Some of these can be changed by CLI args, but not all of them.
-    #
-  Config = {
-    boot_log: false,
-    checkupd: false,
-    pcc:      false,
-    rebooted: false,
-    pacman: {
-      pre_update: {
-        uninstalls: %w[virtualbox-ext-oracle]
-      }
-    },
-    pikaur: {
-      post_update: {
-        installs: %w[virtualbox-ext-oracle]
-      }
-    },
-    pkg_cache_clean: {
-      pkg_dirs: %W[#{ENV["HOME"]}/.cache/pikaur/pkg /var/cache/pacman/pkg],
-      keep_installed: 2,
-      keep_uninstalled: 0
-    }
-  }.as_struct
 end # Uys
+
+### Defaults for all configurable parameters.
+  # Some of these can be changed by CLI args, but not all of them.
+  #
+Uys::Config = {
+  boot_log: false,
+  checkupd: false,
+  pcc:      false,
+  rebooted: false,
+  pacman: {
+    pre_update: {
+      uninstalls: %w[virtualbox-ext-oracle]
+    }
+  },
+  pikaur: {
+    post_update: {
+      installs: %w[virtualbox-ext-oracle]
+    }
+  },
+  pkg_cache_clean: {
+    pkg_dirs: %W[#{ENV["HOME"]}/.cache/pikaur/pkg /var/cache/pacman/pkg],
+    keep_installed: 2,
+    keep_uninstalled: 0
+  }
+}.as_struct
 
 exit(Uys::Cli.new(ARGV).run) if $0 == __FILE__
