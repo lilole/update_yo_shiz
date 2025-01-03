@@ -172,15 +172,14 @@ module Mixin
 
       def run(strings, echo, page, say_done)
         script = strings.join.gsub(/\A\s+|\n+\z/, "") << "\n"
-        script << "echo '+ Done.'\n" if say_done
-        less_opts = page ? %w[-FIJMrSWX#8 --status-col-width=1] : nil
-        less_opts.concat(page.strip.split) if String === page
+        say_done and script << "echo '+ Done.'\n"
+        less_cmd = page ? %W[less -FIJMRSWX#8 --status-col-width=1] : nil
+        String === page and less_cmd.concat(page.strip.split)
 
         if echo
-          less = page ? " | less #{less_opts.join(" ")}" : ""
-          disp = "++ {\n#{script}} 2>&1#{less}".inspect[1..-2]
-          maxw = (Integer === echo) ? echo : (page ? 199 : 80)
-          disp.ellipt!(maxw)
+          less = less_cmd ? " | #{less_cmd.join(" ")}" : ""
+          maxw = (Integer === echo) ? echo : tty_columns
+          disp = "++ {\n#{script}} 2>&1#{less}".inspect[1..-2].ellipt!(maxw)
           script = "echo #{disp.shellescape}\n#{script}"
         end
 
@@ -189,7 +188,7 @@ module Mixin
           PTY.spawn(["/usr/bin/bash", "#{self.class.name}#cmd bash"], file) do |pt_out, pt_in, script_pid|
             final_r, final_w = page ? IO.pipe : [$stdin, $stdout]
             writer = write_thread(pt_out, final_w)
-            reader = read_thread(writer, pt_in, final_r, page && ["less"].concat(less_opts))
+            reader = read_thread(writer, pt_in, final_r, page && less_cmd)
             waiter = wait_thread(script_pid, reader, writer, page && [final_w, final_r])
             waiter.join
           end
@@ -199,6 +198,10 @@ module Mixin
       end
 
     private
+      def tty_columns
+        n = `stty -a 2> /dev/null`[/\bcolumns (\d+)/, 1]
+        n ? n.to_i : 80
+      end
 
       def write_thread(pt_out, write_end)
         Thread.new do
@@ -497,7 +500,7 @@ module Uys
       res = [/warn|error|fail|fatal/i, / kernel: Linux version .+ SMP /]
       out = `journalctl --boot --no-hostname --priority=0..5` # emerg..notice
       out = out.each_line.select { |line| res.any? { _1.match?(line) } }.join
-      with_temp_file(out) { |file| cmd("cat #{file}", page: "+G", echo: true) }
+      with_temp_file(out) { |file| cmd("cat #{file}", page: "+G", echo: false) }
     end
 
     def apply_new_pacman_updates
@@ -538,7 +541,7 @@ module Uys
 
     def rebooted? = !! config.rebooted
 
-    def pacman(opts) = "sudo pacman --noconfirm --color=always #{opts}"
+    def pacman(opts) = "sudo pacman --noconfirm --noprogressbar --color=always #{opts}"
 
     def pikaur(opts) = "pikaur -a --noconfirm --color=always #{opts}"
   end # Core
