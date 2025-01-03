@@ -155,11 +155,13 @@ module Mixin
   module Cmd
     ### Join the given strings into a single bash script, and run it in a bash
       # subprocess in its own pseudo-terminal.
-      # If `echo` is true, then show the full command to run after ellipting it
-      # to 80 chars max, or 199 chars max if `page` is true.
+      # If `echo` is true, then show the full command to run. If `page` is true,
+      # the full command is ellipted to 999 chars max, else it is ellipted to
+      # the terminal's columns, or 80 columns if the terminal query fails.
       # If `echo` is an Integer, then show the full command to run after
       # ellipting it to the given value chars max.
       # If `page` is true, then use `less` to page the output.
+      # If `page` is a String, then add it as extra options to `less`.
       # If `say_done` is true, then show a final "done" line after the output.
       #
     def cmd(*strings, echo: true, page: true, say_done: true)
@@ -178,7 +180,7 @@ module Mixin
 
         if echo
           less = less_cmd ? " | #{less_cmd.join(" ")}" : ""
-          maxw = (Integer === echo) ? echo : tty_columns
+          maxw = (Integer === echo) ? echo : (page ? 999 : tty_columns)
           disp = "++ {\n#{script}} 2>&1#{less}".inspect[1..-2].ellipt!(maxw)
           script = "echo #{disp.shellescape}\n#{script}"
         end
