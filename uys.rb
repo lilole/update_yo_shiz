@@ -32,7 +32,7 @@ module Uys
              6. Reboot if needed.
              7. Check system log for (new) error messages, if rebooted.
              8. Check+apply pacman updates.
-             9. Check+apply pikaur updates.
+             9. Check+apply aura updates.
             10. Goto 7 until updates are clear.
             11. Reinstall conflicting AUR packages if needed.
             12. Clear package caches.
@@ -48,7 +48,7 @@ module Uys
 
           p, pcc, -p => Do package cache cleanup, ignore the other steps.
 
-          r, rebooted, -r => A reboot just occurred, so begin at #6 above.
+          r, rebooted, -r => A reboot just occurred, so begin at #7 above.
 
         See also:
           - Configurable global defaults are defined in the `Uys::Config`
@@ -254,7 +254,7 @@ end # Mixin
 module PackageCacheClean
   ### A fully controlled, smarter version of the `paccache` Arch Linux command.
     # For the given `pacman` package cache dirs, including any custom dirs used
-    # by tools like `pikaur`, clean out files for the given installed and
+    # by tools like `aura`, clean out files for the given installed and
     # uninstalled counts.
     # Useful counts are 0 for uninstalled, and 2 for installed. These values
     # ensure that any new package can be rolled back to its previous version,
@@ -447,16 +447,16 @@ module Uys
       end
       loop do
         apply_new_pacman_updates
-        check_pikaur_updates
-        apply_pikaur_updates
-        ask_continue("Check pacman+pikaur again?", "yNq") or break
+        check_aura_updates
+        apply_aura_updates
+        ask_continue("Check pacman+aura again?", "yNq") or break
       end
-      pikaur_post_update
+      aura_post_update
       clear_package_caches
     end
 
     def check_all_updates
-      cmd("checkupdates \necho \n#{pikaur("-Qu")}")
+      cmd("checkupdates \necho \n#{aura("-Auyd --log-level=info")}")
     end
 
     def check_pacman_updates
@@ -515,23 +515,23 @@ module Uys
       cmd(pacman("-Suy"))
     end
 
-    def check_pikaur_updates
-      ask_continue("Check pikaur updates?") or return
+    def check_aura_updates
+      ask_continue("Check aura updates?") or return
       loop do
-        cmd(pikaur("-Qu"))
+        cmd(aura("-Auyd --log-level=info"))
         ask_continue("Check again?", "yNq") or break
       end
     end
 
-    def apply_pikaur_updates
-      ask_continue("Apply pikaur updates?", "yNq") or return
-      cmd(pikaur("-Su"))
+    def apply_aura_updates
+      ask_continue("Apply aura updates?", "yNq") or return
+      cmd(aura("-Auy"))
     end
 
-    def pikaur_post_update
-      if (pkgs = config.pikaur.post_update.installs)&.any?
+    def aura_post_update
+      if (pkgs = config.aura.post_update.installs)&.any?
         if ask_continue("Install #{pkgs.inspect}?", "yNq")
-          cmd(pikaur("-S #{pkgs.shelljoin}"))
+          cmd(aura("-A #{pkgs.shelljoin}"))
         end
       end
     end
@@ -550,7 +550,7 @@ module Uys
 
     def pacman(opts) = "sudo pacman --noconfirm --noprogressbar --color=always #{opts}"
 
-    def pikaur(opts) = "pikaur -a --noconfirm --color=always #{opts}"
+    def aura(opts) = "aura --noconfirm #{opts}"
   end # Core
 
   class Cli
@@ -601,13 +601,13 @@ Uys::Config = {
       uninstalls: %w[virtualbox-ext-oracle]
     }
   },
-  pikaur: {
+  aura: {
     post_update: {
       installs: %w[virtualbox-ext-oracle]
     }
   },
   pkg_cache_clean: {
-    pkg_dirs: %W[#{ENV["HOME"]}/.cache/pikaur/pkg /var/cache/pacman/pkg],
+    pkg_dirs: %W[#{ENV["HOME"]}/.cache/aura/cache /var/cache/pacman/pkg],
     keep_installed: 2,
     keep_uninstalled: 0
   }

@@ -4,7 +4,7 @@
 
 This tool provides automation for all update steps on Arch Linux, specific to my own systems.
 
-This means in addition to `pacman`, it also runs `pikaur` which is my preferred AUR manager.
+This means in addition to `pacman`, it also runs `aura` which is my preferred AUR manager.
 
 If you want it to run for your AUR manager, feel free to create an issue.
 
@@ -27,28 +27,34 @@ Message:
 Description:
   Automates all the steps normally taken to update Danamis machines:
      1. Check pacman updates.
-     2. Download pacman updates.
-     3. Apply pacman downloaded updates. Warn to close all apps first.
-     4. Check for new *.pacnew files.
-     5. Reboot if needed.
-     6. Check system log for (new) error messages, if rebooted.
-     7. Check+apply pacman updates.
-     8. Check+apply pikaur updates.
-     9. Goto 7 until updates are clear.
-    10. Clear package caches.
+     2. Uninstall conflicting AUR packages if needed.
+     3. Download pacman updates.
+     4. Apply pacman downloaded updates. Warn to close all apps first.
+     5. Check for new *.pacnew files.
+     6. Reboot if needed.
+     7. Check system log for (new) error messages, if rebooted.
+     8. Check+apply pacman updates.
+     9. Check+apply aura updates.
+    10. Goto 7 until updates are clear.
+    11. Reinstall conflicting AUR packages if needed.
+    12. Clear package caches.
 
 Usage:
-  uys [-r|--rebooted]
-  uys [-b|boot_log] [-c|check] [-p|pcc]
+  uys [-bcp] [b|boot_log] [c|check] [p|pcc]
+  uys [-r|r|rebooted]
 
 Where:
-  -r, --rebooted => A reboot just occurred, so begin at #6 above.
+  b, boot_log, -b => Check boot log for errors, ignore the other steps.
 
-  boot_log, -b => Check boot log for errors, ignore the other steps.
+  c, check, -c => Check for updates, ignore the other steps.
 
-  check, -c => Check for updates, ignore the other steps.
+  p, pcc, -p => Do package cache cleanup, ignore the other steps.
 
-  pcc, -p => Do package cache cleanup, ignore the other steps.
+  r, rebooted, -r => A reboot just occurred, so begin at #7 above.
+
+See also:
+  - Configurable global defaults are defined in the `Uys::Config`
+    constant, at the bottom of this file (<path to uys executable>).
 ```
 
 ## Dependencies
@@ -57,7 +63,7 @@ Where:
 - Ruby 3.1+. Tested on Ruby 3.1, 3.2, and 3.3.
 - A not-too-old version of `bash`.
 - The `pacman-contrib` Arch package.
-- The `pikaur` tool for AUR management. This could be changed in theory, with minor code updates.
+- The `aura` tool for AUR management. This could be changed in theory, with minor code updates.
 
 ## Configuration
 
