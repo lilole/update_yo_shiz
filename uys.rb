@@ -33,7 +33,7 @@ module Uys
              7. Check system log for (new) error messages, if rebooted.
              8. Check+apply pacman updates.
              9. Check+apply aura updates.
-            10. Goto 7 until updates are clear.
+            10. Goto 8 until updates are clear.
             11. Reinstall conflicting AUR packages if needed.
             12. Clear package caches.
 
