@@ -10,6 +10,8 @@ require "set"
 require "shellwords"
 
 module Uys
+  VERSION = "1.6.21"
+
   class Cli
     def usage(msg=nil, excode=1)
       msg ||= "Online help."
@@ -17,7 +19,7 @@ module Uys
       $stderr << <<~END
 
         Name:
-          UpdateYoShiz
+          UpdateYoShiz #{Uys::VERSION}
 
         Message:
           #{msg}
@@ -32,7 +34,7 @@ module Uys
              6. Reboot if needed.
              7. Check system log for (new) error messages, if rebooted.
              8. Check+apply pacman updates.
-             9. Check+apply aura updates.
+             9. Check+apply yay updates.
             10. Goto 8 until updates are clear.
             11. Reinstall conflicting AUR packages if needed.
             12. Clear package caches.
@@ -59,6 +61,8 @@ module Uys
     end
   end # Cli
 end # Uys
+
+# _____________________________________________________________________________________________________________________
 
 module Extensions
   def self.apply
@@ -111,6 +115,8 @@ module Extensions
 end # Extensions
 
 Extensions.apply # Add early for use by constants
+
+# _____________________________________________________________________________________________________________________
 
 module Mixin
   module AskContinue
@@ -168,18 +174,19 @@ module Mixin
       # If `page` is a String, then add it as extra options to `less`.
       # If `say_done` is true, then show a final "done" line after the output.
       #
-    def cmd(*strings, echo: true, page: true, say_done: true)
+    def cmd(*strings, echo: true, page: true, say_done: true, raw_esc: false)
       @cmd_core ||= Core.new
-      @cmd_core.run(strings, echo, page, say_done)
+      @cmd_core.run(strings, echo, page, say_done, raw_esc)
     end
 
     class Core
       include Mixin::WithTempFile
 
-      def run(strings, echo, page, say_done)
+      def run(strings, echo, page, say_done, raw_esc)
         script = strings.join.gsub(/\A\s+|\n+\z/, "") << "\n"
         say_done and script << "echo '+ Done.'\n"
         less_cmd = page ? %W[less -FIJMRSWX#8 --status-col-width=1] : nil
+        less_cmd << "-r" if less_cmd && raw_esc
         String === page and less_cmd.concat(page.strip.split)
 
         if echo
@@ -251,18 +258,20 @@ module Mixin
   end # Cmd
 end # Mixin
 
+# _____________________________________________________________________________________________________________________
+
 module PackageCacheClean
   ### A fully controlled, smarter version of the `paccache` Arch Linux command.
     # For the given `pacman` package cache dirs, including any custom dirs used
-    # by tools like `aura`, clean out files for the given installed and
+    # by tools like `yay`, clean out files for the given installed and
     # uninstalled counts.
     # Useful counts are 0 for uninstalled, and 2 for installed. These values
     # ensure that any new package can be rolled back to its previous version,
     # while saving the max disk space.
     # A final prompt is given before deleting anything.
     #
-  def package_cache_clean(cache_dirs, keep_installed:, keep_uninstalled:)
-    Core.new(cache_dirs, keep_installed, keep_uninstalled).run
+  def package_cache_clean(cache_dirs, cached_files, keep_installed:, keep_uninstalled:)
+    Core.new(cache_dirs, cached_files, keep_installed, keep_uninstalled).run
   end
 
   class Core
@@ -270,10 +279,11 @@ module PackageCacheClean
     include Mixin::Cmd
     include Mixin::WithTempFile
 
-    attr_reader :cache_dirs, :file_info, :keep_installed, :keep_uninstalled
+    attr :cache_dirs, :cached_files, :file_info, :keep_installed, :keep_uninstalled
 
-    def initialize(cache_dirs, keep_installed, keep_uninstalled)
-      @cache_dirs       = cache_dirs
+    def initialize(cache_dirs, cached_files, keep_installed, keep_uninstalled)
+      @cache_dirs       = cache_dirs || []
+      @cached_files     = cached_files || []
       @keep_installed   = keep_installed
       @keep_uninstalled = keep_uninstalled
     end
@@ -290,17 +300,21 @@ module PackageCacheClean
   private
 
     def find_package_files
-      cache_dirs.each do |dir|
+      cache_dirs.each { |dir|
         dir = File.expand_path(dir)
-        begin
-          Dir.glob("*-*.pkg.tar*", base: dir)
-        end.each do |file|
-          next if file[-4, 4] == ".sig"
-          path = File.join(dir, file)
-          dir_info[dir] << { path: path, file: file }
-          file_info[path] = { dir: dir, file: file }
-        end
-      end
+        files = Dir.glob("*-*.pkg.tar*", base: dir)
+        files.each { |file| add_file(dir:, file:) }
+      }
+      cached_files.each { |path| add_file(path:) }
+    end
+
+    def add_file(dir: nil, file: nil, path: nil)
+      dir  or dir  = File.dirname(path)
+      file or file = File.basename(path)
+      return if file[-4, 4] == ".sig"
+      path or path = File.join(dir, file)
+      dir_info[dir] << { path: path, file: file }
+      file_info[path] = { dir: dir, file: file }
     end
 
     def dir_info = @dir_info ||= Hash.new { |h, k| h[k] = [] }
@@ -409,6 +423,8 @@ module PackageCacheClean
   end # Core
 end # PackageCacheClean
 
+# _____________________________________________________________________________________________________________________
+
 module Uys
   class Core
     include Mixin::AskContinue
@@ -447,39 +463,39 @@ module Uys
       end
       loop do
         apply_new_pacman_updates
-        check_aura_updates
-        apply_aura_updates
-        ask_continue("Check pacman+aura again?", "yNq") or break
+        check_yay_updates
+        apply_yay_updates
+        ask_continue("Check pacman+yay again?", "yNq") or break
       end
-      aura_post_update
+      yay_post_update
       clear_package_caches
     end
 
     def check_all_updates
-      cmd("checkupdates \necho \n#{aura("-Auyd --log-level=info")}")
+      cmd("#{pacman("-Sy --noprogressbar")} && #{pacman("-Qu")}\necho '+ yay:'\n#{yay("-Qua")}")
     end
 
     def check_pacman_updates
-      cmd("checkupdates")
+      cmd("#{pacman("-Sy --noprogressbar")} && #{pacman("-Qu")}")
     end
 
     def pacman_pre_update
       if (pkgs = config.pacman.pre_update.uninstalls)&.any?
         if ask_continue("Uninstall #{pkgs.inspect}?", "yNq")
-          cmd(pacman("-Rs #{pkgs.shelljoin}"))
+          cmd(pacman("-Rs --noprogressbar #{pkgs.shelljoin}"), raw_esc: true)
         end
       end
     end
 
     def download_pacman_updates
       ask_continue("Download needed updates?") or return
-      cmd(pacman("-Suyw"))
+      cmd(pacman("-Suyw --noprogressbar"), raw_esc: true)
     end
 
     def apply_pacman_updates
       puts("\nWARNING: CLOSE EXTRA APP WINDOWS: Updates are about to be applied.")
       ask_continue("Apply downloaded updates?") or return
-      cmd(pacman("-Su"))
+      cmd(pacman("-Su --noprogressbar"), raw_esc: true)
     end
 
     def check_for_pacnew_files
@@ -512,26 +528,26 @@ module Uys
 
     def apply_new_pacman_updates
       ask_continue("Check and apply new pacman updates?") or return
-      cmd(pacman("-Suy"))
+      cmd(pacman("-Suy --noprogressbar"), raw_esc: true)
     end
 
-    def check_aura_updates
-      ask_continue("Check aura updates?") or return
+    def check_yay_updates
+      ask_continue("Check yay updates?") or return
       loop do
-        cmd(aura("-Auyd --log-level=info"))
+        cmd(yay("-Qua"))
         ask_continue("Check again?", "yNq") or break
       end
     end
 
-    def apply_aura_updates
-      ask_continue("Apply aura updates?", "yNq") or return
-      cmd(aura("-Auy"))
+    def apply_yay_updates
+      ask_continue("Apply yay updates?", "yNq") or return
+      cmd(yay("-Sua"), raw_esc: true)
     end
 
-    def aura_post_update
-      if (pkgs = config.aura.post_update.installs)&.any?
+    def yay_post_update
+      if (pkgs = config.yay.post_update.installs)&.any?
         if ask_continue("Install #{pkgs.inspect}?", "yNq")
-          cmd(aura("-A #{pkgs.shelljoin}"))
+          cmd(yay("-Sa #{pkgs.shelljoin}"), raw_esc: true)
         end
       end
     end
@@ -539,19 +555,25 @@ module Uys
     def clear_package_caches(ask: true)
       ask and (ask_continue "Clear package caches?" or return)
       Config.pkg_cache_clean.then do |cfg|
-        dirs  = cfg.pkg_dirs
+        dirs  = cfg.pkg_dirs&.map { |o| Proc === o ? o[] : o }&.flatten
+        files = cfg.pkg_files&.map { |o| Proc === o ? o[] : o }&.flatten
         keepi = cfg.keep_installed
         keepu = cfg.keep_uninstalled
-        package_cache_clean(dirs, keep_installed: keepi, keep_uninstalled: keepu)
+        package_cache_clean(dirs, files, keep_installed: keepi, keep_uninstalled: keepu)
       end
     end
 
     def rebooted? = !! config.rebooted
 
-    def pacman(opts) = "sudo pacman --noconfirm --noprogressbar --color=always #{opts}"
+    def pacman(opts) = "sudo pacman #{opts} --noconfirm --color=always"
 
-    def aura(opts) = "aura --noconfirm #{opts}"
+    def yay(opts)
+      "yay --answerclean=None --answerdiff=None --answeredit=None --answerupgrade=None " \
+        "#{opts} --noconfirm --color=always"
+    end
   end # Core
+
+  # ___________________________________________________________________________________________________________________
 
   class Cli
     attr_reader :args
@@ -588,9 +610,10 @@ module Uys
   end # Cli
 end # Uys
 
-### Defaults for all configurable parameters.
-  # Some of these can be changed by CLI args, but not all of them.
-  #
+## ____________________________________________________________________________________________________________________
+## Defaults for all configurable parameters.
+ # Some of these can be changed by CLI args, but not all of them.
+ #
 Uys::Config = {
   boot_log: false,
   checkupd: false,
@@ -601,14 +624,15 @@ Uys::Config = {
       uninstalls: %w[virtualbox-ext-oracle]
     }
   },
-  aura: {
+  yay: {
     post_update: {
       installs: %w[virtualbox-ext-oracle]
     }
   },
   pkg_cache_clean: {
-    pkg_dirs: %W[#{ENV["HOME"]}/.cache/aura/cache /var/cache/pacman/pkg],
-    keep_installed: 2,
+    pkg_dirs:         ["/var/cache/pacman/pkg"],
+    pkg_files:        [-> { Dir.glob("#{ENV["HOME"]}/.cache/yay/*/*-*.pkg.tar*") }],
+    keep_installed:   2,
     keep_uninstalled: 0
   }
 }.as_struct
