@@ -9,8 +9,11 @@ require "pty"
 require "set"
 require "shellwords"
 
+require_relative "aut_aut"
+AutAut.setup
+
 module Uys
-  VERSION = "1.6.21"
+  VERSION = ::UpdateYoShiz::VERSION
 
   class Cli
     def usage(msg=nil, excode=1)
