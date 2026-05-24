@@ -3,6 +3,8 @@
 # Copyright 2026 Dan Higgins
 # SPDX-License-Identifier: Apache-2.0
 
+require "io/console"
+
 module Mixin
   module AskContinue
     ### Present a single-line prompt with single-character response choices.

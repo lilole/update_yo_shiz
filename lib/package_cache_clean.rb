@@ -3,6 +3,8 @@
 # Copyright 2026 Dan Higgins
 # SPDX-License-Identifier: Apache-2.0
 
+require "shellwords"
+
 module PackageCacheClean
   ### A fully controlled, smarter version of the `paccache` Arch Linux command.
     # For the given `pacman` package cache dirs, including any custom dirs used

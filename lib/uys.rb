@@ -3,12 +3,6 @@
 # Copyright 2024 Dan Higgins
 # SPDX-License-Identifier: Apache-2.0
 
-require "io/console"
-require "io/wait"
-require "pty"
-require "set"
-require "shellwords"
-
 require_relative "aut_aut"
 AutAut.setup
 

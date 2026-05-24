@@ -3,6 +3,10 @@
 # Copyright 2026 Dan Higgins
 # SPDX-License-Identifier: Apache-2.0
 
+require "io/wait"
+require "pty"
+require "shellwords"
+
 module Mixin
   module Cmd
     ### Join the given strings into a single bash script, and run it in a bash

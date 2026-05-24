@@ -3,6 +3,8 @@
 # Copyright 2026 Dan Higgins
 # SPDX-License-Identifier: Apache-2.0
 
+require "shellwords"
+
 module Uys
   class Core
     include Mixin::AskContinue
