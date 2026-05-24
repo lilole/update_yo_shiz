@@ -4,7 +4,7 @@
 
 This tool provides automation for all update steps on Arch Linux, specific to my own systems.
 
-This means in addition to `pacman`, it also runs `aura` which is my preferred AUR manager.
+This means in addition to `pacman`, it also runs `yay` which is my preferred AUR manager.
 
 If you want it to run for your AUR manager, feel free to create an issue.
 
@@ -19,7 +19,7 @@ Features:
 
 ```
 Name:
-  UpdateYoShiz
+  UpdateYoShiz <version>
 
 Message:
   Online help.
@@ -34,7 +34,7 @@ Description:
      6. Reboot if needed.
      7. Check system log for (new) error messages, if rebooted.
      8. Check+apply pacman updates.
-     9. Check+apply aura updates.
+     9. Check+apply yay updates.
     10. Goto 8 until updates are clear.
     11. Reinstall conflicting AUR packages if needed.
     12. Clear package caches.
@@ -63,7 +63,7 @@ See also:
 - Ruby 3.1+. Tested on Ruby 3.1, 3.2, and 3.3.
 - A not-too-old version of `bash`.
 - The `pacman-contrib` Arch package.
-- The `aura` tool for AUR management. This could be changed in theory, with minor code updates.
+- The `yay` tool for AUR management. This could be changed in theory, with minor code updates.
 
 ## Configuration
 
