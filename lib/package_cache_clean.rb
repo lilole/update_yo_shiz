@@ -20,9 +20,9 @@ module PackageCacheClean
   end
 
   class Core
-    include Mixin::AskContinue
-    include Mixin::Cmd
-    include Mixin::WithTempFile
+    include Ulse::Mixin::AskContinue
+    include Ulse::Mixin::Cmd
+    include Ulse::Mixin::WithTempFile
 
     attr :cache_dirs, :cached_files, :file_info, :keep_installed, :keep_uninstalled
 

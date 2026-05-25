@@ -10,5 +10,6 @@ arma.import arma: "../ultisel", version: nil, build: true,
     Ulse.minimum_custom_includes,
     '^ulse/ext/(object|string)\.rb',
     '^ulse/ext/object/(as_grouping|grouping|transform)\.rb',
-    '^ulse/ext/string/ellipt\.rb'
+    '^ulse/ext/string/ellipt\.rb',
+    '^ulse/mixin/(ask_continue|cmd|with_temp_file)\.rb'
   ]

@@ -7,9 +7,9 @@ require "shellwords"
 
 module Uys
   class Core
-    include Mixin::AskContinue
-    include Mixin::Cmd
-    include Mixin::WithTempFile
+    include Ulse::Mixin::AskContinue
+    include Ulse::Mixin::Cmd
+    include Ulse::Mixin::WithTempFile
     include PackageCacheClean
 
     attr_reader :config
