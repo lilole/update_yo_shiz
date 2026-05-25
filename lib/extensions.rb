@@ -6,32 +6,8 @@
 module Extensions
   def self.apply
     ::Object.include(Object::AsStruct)
-    ::String.include(String::Ellipt)
+    ::String.include(::Ulse::Ext::String::Ellipt)
   end
-
-  module String
-    module Ellipt
-      ### Trim self to given width with ellipsis in the middle and return self.
-        #
-      def ellipt!(width, ellipsis="...")
-        e_sz = ellipsis.size
-        return replace(ellipsis) if width <= e_sz
-        return self if size <= width
-        chunk, carry = (width - e_sz).divmod(2)
-        (0...e_sz).each  { |i| self[chunk + carry + i] = ellipsis[i] }
-        (0...chunk).each { |i| self[chunk + carry + e_sz + i] = self[size - chunk + i] }
-        slice!(width, size - width)
-        self
-      end
-
-      ### Trim a copy of self to given width with ellipsis in the middle and
-        # return it.
-        #
-      def ellipt(width, ellipsis="...")
-        dup.ellipt!(width, ellipsis)
-      end
-    end # Ellipt
-  end # String
 
   module Object
     module AsStruct
